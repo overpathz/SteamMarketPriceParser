@@ -11,34 +11,65 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SteamParser {
-    public static void main(String[] args) throws InterruptedException {
-        String NULP_URL = "https://steamcommunity.com/market/listings/730/AK-47%20%7C%20Blue%20Laminate%20%28Well-Worn%29";
+    public static WebDriver driver;
+    public static final String URL = "https://steamcommunity.com/market/listings/730/AK-47%20%7C%20Blue%20Laminate%20%28Well-Worn%29";
 
+    public static void main(String[] args) throws InterruptedException {
         System.setProperty("webdriver.chrome.driver", "E:\\programms\\chromedriver.exe");
-        WebDriver driver = new ChromeDriver();
+        driver = new ChromeDriver();
         WebDriverWait wait = new WebDriverWait(driver, 5);
-        driver.get(NULP_URL);
+        driver.get(URL);
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("/html/body/div[1]/div[7]/div[2]/div[2]/div[4]/div[1]/div[3]/div[4]/div[1]/div[1]/div[2]/span[2]")));
 
+
+        clickMoreDetailsElement();
+        printTextElement("id", "largeiteminfo_item_name");
+        printTextElement("id", "market_commodity_buyrequests");
+        printTextElement("id", "market_commodity_buyreqeusts_table");
+
+        double averagePrice = findAveragePrice();
+
+        System.out.println("\nAverage USD price: " + averagePrice);
+
+    }
+
+    public static void clickMoreDetailsElement() {
         driver.findElement(By.xpath("/html/body/div[1]/div[7]/div[2]/div[2]/div[4]/div[1]/div[3]/div[4]/div[1]/div[2]/span")).click();
+    }
 
-        String weaponTitle = driver.findElement(By.id("largeiteminfo_item_name")).getText();
-        System.out.println(weaponTitle);
-        System.out.println();
+    public static void printTextElementByID(String id) {
+        String element = driver.findElement(By.id(id)).getText();
+        System.out.println(element);
+    }
 
-        String reqToBuyStartedPrice = driver.findElement(By.id("market_commodity_buyrequests")).getText();
-        System.out.println(reqToBuyStartedPrice);
-        System.out.println();
+    public static void printTextElement(String by, String value) {
+        String element;
+        switch (by) {
+            case "xpath":
+                element = driver.findElement(By.xpath(value)).getText();
+                System.out.println(element);
+                break;
 
-        WebElement tableWithPrices = driver.findElement(By.id("market_commodity_buyreqeusts_table"));
-        System.out.println(tableWithPrices.getText());
+            case "id":
+                element = driver.findElement(By.id(value)).getText();
+                System.out.println(element);
+                break;
 
-        Integer maxPaginNumber = Integer.parseInt(driver.findElement(By.xpath("/html/body/div[1]/div[7]/div[2]/div[2]/div[4]/div[1]/div[3]/div[4]/div[3]/div[1]/span[2]/span[7]")).getText());
+            case "class":
+                element = driver.findElement(By.className(value)).getText();
+                System.out.println(element);
+                break;
+        }
+    }
+
+    public static double findAveragePrice() throws InterruptedException {
+        int maxPaginationNumber = Integer.parseInt(driver.findElement(By.xpath("/html/body/div[1]/div[7]/div[2]/div[2]/div[4]/div[1]/div[3]/div[4]/div[3]/div[1]/span[2]/span[7]")).getText());
 
         double avgPrice = 0;
+
         List<String> rawPrices = new ArrayList<>();
 
-        for (int i = 0; i < maxPaginNumber; i++) {
+        for (int i = 0; i < maxPaginationNumber; i++) {
             List<WebElement> results = driver.findElements(By.cssSelector(".market_listing_price"));
 
             results.stream()
@@ -52,10 +83,14 @@ public class SteamParser {
             Thread.sleep(2000);
         }
 
-        System.out.println(rawPrices);
 
-        List<String> otherRaw = rawPrices.stream().map(x-> x.split(" ")[0]).toList();
+        System.out.println(rawPrices);
+        List<String> otherRaw = rawPrices.stream().map(x-> x.split(" ")[0].substring(1)).filter(x->!x.contains(",")).toList();
         System.out.println(otherRaw);
 
+        avgPrice = otherRaw.stream().map(Double::parseDouble).reduce(Double::sum).get() / otherRaw.size();
+
+        return avgPrice;
     }
+
 }
